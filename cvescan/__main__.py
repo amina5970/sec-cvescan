@@ -5,6 +5,7 @@ import json
 import logging
 import sys
 
+import vistir
 from tabulate import tabulate
 
 import cvescan.constants as const
@@ -53,8 +54,11 @@ def get_null_logger():
 LOGGER = get_null_logger()
 
 
-def error_exit(msg, code=const.ERROR_RETURN_CODE):
-    print("Error: %s" % msg, file=sys.stderr)
+def error_exit(msg, code=const.ERROR_RETURN_CODE, spinner=None):
+    if spinner is not None:
+        spinner.fail(msg)
+    else:
+        print("Error: %s" % msg, file=sys.stderr)
     sys.exit(code)
 
 
@@ -200,39 +204,56 @@ def main():
     error_exit_code = (
         const.NAGIOS_UNKNOWN_RETURN_CODE if opt.nagios_mode else const.ERROR_RETURN_CODE
     )
+    with vistir.contextmanagers.spinner(
+        spinner_name="dots", start_text="Calculating System Info..."
+    ) as spinner:
+        try:
+            target_sysinfo = TargetSysInfo(opt, local_sysinfo)
 
-    try:
-        target_sysinfo = TargetSysInfo(opt, local_sysinfo)
-
-        log_config_options(opt)
-        log_local_system_info(local_sysinfo, opt.manifest_mode)
-        log_target_system_info(target_sysinfo)
-    except (FileNotFoundError, PermissionError) as err:
-        error_exit("Failed to determine the correct Ubuntu codename: %s" % err)
-    except DistribIDError as di:
-        error_exit(
-            "Invalid linux distribution detected, CVEScan must be run on Ubuntu: %s"
-            % di
-        )
-    except PkgCountError as pke:
-        error_exit("Failed to determine the local package count: %s" % pke)
+            log_config_options(opt)
+            log_local_system_info(local_sysinfo, opt.manifest_mode)
+            log_target_system_info(target_sysinfo)
+        except (FileNotFoundError, PermissionError) as err:
+            error_exit(
+                "Failed to determine the correct Ubuntu codename: %s" % err,
+                spinner=spinner,
+            )
+        except DistribIDError as di:
+            error_exit(
+                "Invalid linux distribution detected, CVEScan must be run on Ubuntu: %s"
+                % di,
+                spinner=spinner,
+            )
+        except PkgCountError as pke:
+            error_exit(
+                "Failed to determine the local package count: %s" % pke, spinner=spinner
+            )
+        spinner.ok("✔  System Information Loaded!")
 
     output_formatter = load_output_formatter(opt)
 
-    try:
-        uct_data = load_uct_data(opt, local_sysinfo)
-        cve_scanner = CVEScanner(LOGGER)
-        scan_results = cve_scanner.scan(
-            target_sysinfo.codename, uct_data, target_sysinfo.installed_pkgs
-        )
-        (results, return_code) = output_formatter.format_output(
-            scan_results, target_sysinfo
-        )
-    except Exception as ex:
-        error_exit(
-            "An unexpected error occurred while running CVEScan: %s" % ex,
-            error_exit_code,
-        )
+    with vistir.contextmanagers.spinner(
+        spinner_name="dots",
+        start_text="Scanning {0} packages...".format(
+            len(target_sysinfo.installed_pkgs)
+        ),
+    ) as spinner:
+        try:
+            uct_data = load_uct_data(opt, local_sysinfo)
+            cve_scanner = CVEScanner(LOGGER)
+            scan_results = cve_scanner.scan(
+                target_sysinfo.codename, uct_data, target_sysinfo.installed_pkgs
+            )
+            results, return_code = output_formatter.format_output(
+                scan_results, target_sysinfo
+            )
+        except Exception as ex:
+            error_exit(
+                "An unexpected error occurred while running CVEScan: %s" % ex,
+                error_exit_code,
+                spinner=spinner,
+            )
+        spinner.ok("✔  Scan Complete!")
 
     LOGGER.info(results)
     sys.exit(return_code)
