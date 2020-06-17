@@ -26,7 +26,7 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
         "Topic :: Security",
     ],
-    install_requires=["appdirs", "cachecontrol", "vistir", "tabulate"],
+    install_requires=["appdirs", "cachecontrol", "vistir[spinner]", "tabulate"],
     extras_require={
         "apt": [
             "python-distutils-extra @ "
