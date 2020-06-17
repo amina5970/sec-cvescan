@@ -172,11 +172,11 @@ def load_uct_data(opt, local_sysinfo):
     if opt.download_uct_file:
         if local_sysinfo.is_snap:
             uct_file_path = "%s/%s" % (local_sysinfo.snap_user_common, uct_file_path)
-        downloader.download_bz2_file(
-            LOGGER, const.UCT_DATA_URL, const.UCT_DATA_FILE, uct_file_path
+        result_file = downloader.download_bz2_file(
+            LOGGER, const.UCT_DATA_URL, const.UCT_DATA_FILE
         )
 
-    with open(uct_file_path) as uct_file:
+    with open(result_file) as uct_file:
         uct_data = json.load(uct_file)
 
     return uct_data

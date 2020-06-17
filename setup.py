@@ -19,13 +19,22 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/canonical/sec-cvescan",
     packages=setuptools.find_packages(exclude=["tests"]),
+    license="GPLv3",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: POSIX :: Linux",
         "Topic :: Security",
     ],
-    install_requires=["argparse", "configparser", "pycurl", "tabulate"],
+    install_requires=["appdirs", "cachecontrol", "vistir", "tabulate"],
+    extras_require={
+        "apt": [
+            "python-distutils-extra @ "
+            "git+https://salsa.debian.org/python-team/modules/"
+            "python-distutils-extra.git",
+            "python-apt @ git+https://salsa.debian.org/apt-team/python-apt",
+        ],
+    },
     python_requires=">=3.5",
     setup_requires=["pytest-runner"],
     tests_require=["pytest", "pytest-cov"],
